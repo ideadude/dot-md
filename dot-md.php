@@ -76,10 +76,16 @@ add_action( 'init', 'dotmd_init' );
 
 /**
  * Add custom rewrite rule for .md download
- * Note: This requires .htaccess or nginx configuration to rewrite .md URLs
+ * Supports URLs like: post-slug.md or page/path.md
  */
 function dotmd_add_download_rewrite() {
-	// Not used - handled by .htaccess instead
+	// Match any URL ending in .md and route to WordPress with md=1 and download=1
+	// Using both 'name' (for posts) and 'pagename' (for pages) lets WordPress resolve correctly
+	add_rewrite_rule(
+		'^(.+?)\.md/?$',
+		'index.php?name=$matches[1]&pagename=$matches[1]&md=1&download=1',
+		'top'
+	);
 }
 
 /**
@@ -115,39 +121,70 @@ function dotmd_template_redirect() {
 		return;
 	}
 
+	// Security: Block password-protected posts
+	if ( post_password_required( $post ) ) {
+		status_header( 403 );
+		wp_die( 'This content is password protected.', 'Password Protected', array( 'response' => 403 ) );
+	}
+
+	// Security: Block posts the current user cannot read
+	if ( ! current_user_can( 'read_post', $post->ID ) ) {
+		// Use 404 to avoid confirming the post exists
+		status_header( 404 );
+		wp_die( 'Not found.', 'Not Found', array( 'response' => 404 ) );
+	}
+
+	// Security: Block non-public post types
+	$post_type_object = get_post_type_object( $post->post_type );
+	if ( empty( $post_type_object ) || ! $post_type_object->publicly_queryable ) {
+		status_header( 404 );
+		wp_die( 'Not found.', 'Not Found', array( 'response' => 404 ) );
+	}
+
 	// Check if download parameter is set (from .htaccess rewrite)
 	$is_download = isset( $wp_query->query_vars['download'] ) && $wp_query->query_vars['download'] == '1';
 
-	// Check if we have a cached version (user-specific to prevent exposing sensitive content)
-	$user_id = get_current_user_id(); // 0 for logged-out users
-	$post_version = get_post_meta( $post->ID, '_dotmd_version', true );
-	if ( empty( $post_version ) ) {
-		$post_version = 1;
-		update_post_meta( $post->ID, '_dotmd_version', $post_version );
-	}
-	$cache_key = 'dotmd_' . $post->ID . '_u' . $user_id . '_pv' . $post_version . '_v' . DOTMD_VERSION;
-	$markdown = get_transient( $cache_key );
+	// Only cache for logged-out users to prevent leaking personalized content
+	$is_logged_out = ! is_user_logged_in();
+	$markdown = false;
 
-	// If no cache, generate markdown
+	if ( $is_logged_out ) {
+		$post_version = get_post_meta( $post->ID, '_dotmd_version', true );
+		if ( empty( $post_version ) ) {
+			$post_version = 1;
+			update_post_meta( $post->ID, '_dotmd_version', $post_version );
+		}
+		$cache_key = 'dotmd_' . $post->ID . '_public_pv' . $post_version . '_v' . DOTMD_VERSION;
+		$markdown = get_transient( $cache_key );
+	}
+
+	// If no cache or logged in, generate markdown
 	if ( false === $markdown ) {
 		$markdown = dotmd_generate_markdown( $post );
 
-		// Cache for 1 week (will be cleared on post update)
-		set_transient( $cache_key, $markdown, WEEK_IN_SECONDS );
+		// Cache only for logged-out users (personalized content should not be cached)
+		if ( $is_logged_out ) {
+			set_transient( $cache_key, $markdown, WEEK_IN_SECONDS );
+		}
 	}
 
 	// Set headers - download if download=1 parameter, display otherwise
 	header( 'Content-Type: text/plain; charset=utf-8' );
 
 	if ( $is_download ) {
-		// .md extension (via .htaccess) triggers download
+		// .md extension triggers download
 		header( 'Content-Disposition: attachment; filename="' . $post->post_name . '.md"' );
 	} else {
 		// /md/ endpoint displays in browser
 		header( 'Content-Disposition: inline; filename="' . $post->post_name . '.md"' );
 	}
 
-	header( 'Content-Length: ' . strlen( $markdown ) );
+	// Security headers
+	header( 'X-Content-Type-Options: nosniff' );
+	header( 'Vary: Cookie' ); // Output may differ based on authentication
+
+	// Allow filtering the final output before sending to client
+	$markdown = apply_filters( 'dotmd_pre_output', $markdown, $post );
 
 	// Output markdown
 	echo $markdown;
@@ -242,7 +279,8 @@ function dotmd_generate_markdown( $post ) {
 		$content_markdown = dotmd_cleanup_whitespace( $content_markdown );
 		$markdown .= $content_markdown;
 	} catch ( Exception $e ) {
-		// If conversion fails, fall back to plain text
+		// If conversion fails, fall back to plain text (structure will be lost)
+		$markdown .= "<!-- Warning: Markdown conversion failed, showing plain text -->\n\n";
 		$markdown .= strip_tags( $content );
 	}
 
@@ -290,6 +328,22 @@ function dotmd_admin_bar_link( $wp_admin_bar ) {
 	}
 
 	global $post;
+
+	// Don't show link if post is password-protected
+	if ( post_password_required( $post ) ) {
+		return;
+	}
+
+	// Don't show link if user can't read the post
+	if ( ! current_user_can( 'read_post', $post->ID ) ) {
+		return;
+	}
+
+	// Don't show link for non-public post types
+	$post_type_object = get_post_type_object( $post->post_type );
+	if ( empty( $post_type_object ) || ! $post_type_object->publicly_queryable ) {
+		return;
+	}
 
 	$wp_admin_bar->add_node( array(
 		'id'    => 'dotmd-download',
