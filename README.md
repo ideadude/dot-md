@@ -1,116 +1,140 @@
-# Dot MD - WordPress Markdown Export Plugin
+# Dot MD
 
-Convert any WordPress post or page to Markdown by simply adding `.md` to the URL.
+> Convert WordPress posts to Markdown with a simple URL pattern
 
-## Description
+[![WordPress Plugin](https://img.shields.io/badge/WordPress-5.0%2B-blue.svg)](https://wordpress.org/)
+[![PHP Version](https://img.shields.io/badge/PHP-7.4%2B-purple.svg)](https://php.net/)
+[![License](https://img.shields.io/badge/License-GPL%20v2-green.svg)](LICENSE)
 
-Dot MD makes it incredibly easy to get a Markdown version of any post or page on your WordPress site. This is particularly useful for:
+A simple WordPress plugin that lets you view or download any post/page as Markdown by adding `/md/` or `.md` to the URL.
 
-- AI assistants that need to consume your content
-- Content archival and backups
-- Migrating content between platforms
-- Sharing content in developer-friendly formats
+## Quick Start
 
-## Features
+```bash
+# Clone the repo
+git clone https://github.com/ideadude/dot-md.git
 
-- **Simple URL Pattern**: Just add `/md/` to the end of any post or page URL
-- **Smart Caching**: Generated Markdown is cached for performance and automatically refreshed when content updates
-- **Complete Conversion**: Converts rendered HTML content including:
-  - Headers
-  - Lists (ordered and unordered)
-  - Links and images
-  - Code blocks
-  - Tables
-  - Blockquotes
-  - And more!
-- **Metadata Included**: Each Markdown file includes:
-  - Post title
-  - Publication date
-  - Author
-  - Permalink
-  - Excerpt (if available)
-- **Admin Bar Integration**: Convenient "Download as Markdown" link in the admin bar
+# Move to WordPress plugins directory
+mv dot-md /path/to/wordpress/wp-content/plugins/
 
-## Installation
-
-1. Upload the `dot-md` folder to `/wp-content/plugins/`
-2. Activate the plugin through the 'Plugins' menu in WordPress
-3. That's it! No configuration needed.
+# Activate in WordPress admin
+```
 
 ## Usage
 
-To get a Markdown version of any post or page:
+### View in Browser
+Add `/md/` to any post URL:
+```
+https://example.com/my-post/      → Original
+https://example.com/my-post/md/   → Markdown (displays in browser)
+```
 
-1. Visit the post or page normally
-2. Add `/md/` to the end of the URL
-3. The Markdown file will automatically download
+### Download File
+Add `.md` to any post URL (requires web server configuration):
+```
+https://example.com/my-post.md    → Downloads markdown file
+```
 
-**Example:**
-- Original URL: `https://example.com/my-blog-post/`
-- Markdown URL: `https://example.com/my-blog-post/md/`
+## Installation & Configuration
 
-Alternatively, click "Download as Markdown" in the admin bar when viewing any post or page.
+### 1. Install Plugin
+- Upload to `/wp-content/plugins/dot-md/`
+- Activate via WordPress admin
+- `/md/` endpoint works immediately
 
-## How It Works
+### 2. Configure Web Server (Optional)
 
-The plugin uses a rewrite endpoint to detect when `/md/` is added to a URL. When triggered:
+To enable `.md` downloads, add a rewrite rule:
 
-1. It retrieves the post content with all WordPress filters applied (same as what visitors see)
-2. Converts the HTML to clean Markdown using a customized version of the league/html-to-markdown library
-3. Adds metadata header (title, date, author, URL)
-4. Caches the result for 1 week
-5. Serves the file with proper headers for download
+#### Apache (.htaccess)
+Add before standard WordPress rules:
+```apache
+# Custom rule for .md downloads
+RewriteRule ^(.+)\.md$ /$1/md/?download=1 [QSA,L]
+```
 
-The cache is automatically cleared whenever the post is updated.
+#### Nginx
+Add to server block:
+```nginx
+rewrite ^/(.+)\.md$ /$1/md/?download=1 last;
+```
 
-## Technical Details
+## Features
 
-### Dependencies
+- 🚀 **Zero Config** - Works immediately after activation
+- 📝 **Smart Conversion** - Handles headers, lists, links, images, code, tables, blockquotes
+- ⚡ **Cached** - Generated markdown cached for 1 week, auto-refreshed on updates
+- 🎯 **Two Modes** - View in browser or download file
+- 🔧 **Developer Friendly** - Filterable output, clean code
+- 📊 **Metadata** - Includes title, date, author, permalink in every file
 
-The plugin includes a namespaced version of the league/html-to-markdown library to avoid conflicts with other plugins. The namespace `DotMD\HtmlToMarkdown` ensures compatibility.
+## Use Cases
+
+- **AI Integration**: Feed content to Claude, ChatGPT, or other LLMs
+- **Content Migration**: Export to static site generators (Hugo, Jekyll, etc.)
+- **Documentation**: Quick export for developer docs
+- **Archival**: Backup content in portable format
+- **Cross-platform**: Share content in universal format
+
+## Developer API
 
 ### Filters
 
-**`dotmd_markdown_output`**
-Filter the final Markdown output before it's served.
+**`dotmd_markdown_output`** - Modify markdown before output
 
 ```php
 add_filter( 'dotmd_markdown_output', function( $markdown, $post ) {
     // Add custom footer
-    $markdown .= "\n\nCustom footer text";
+    $markdown .= "\n\n---\nGenerated by My Company";
     return $markdown;
 }, 10, 2 );
 ```
 
-### Cache
+### Cache Management
 
-Markdown is cached using WordPress transients with the key pattern:
-```
-dotmd_{post_id}_v{plugin_version}
-```
+Markdown is cached using WordPress transients:
+- **Key pattern**: `dotmd_{post_id}_v{version}`
+- **Duration**: 1 week
+- **Auto-cleared on**: Post update, post deletion
 
-Cache is automatically cleared on:
-- Post update
-- Post deletion
+## How It Works
+
+1. **Detect** - WordPress rewrite endpoint catches `/md/` in URL
+2. **Convert** - HTML → Markdown using league/html-to-markdown (namespaced to `DotMD\HtmlToMarkdown`)
+3. **Cache** - Store result in transient for 1 week
+4. **Serve** - Output with appropriate headers (inline or attachment)
 
 ## Requirements
 
-- WordPress 5.0 or higher
-- PHP 7.4 or higher
+| Requirement | Version |
+|------------|---------|
+| WordPress  | 5.0+    |
+| PHP        | 7.4+    |
+
+## Contributing
+
+Contributions are welcome! Feel free to:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-thing`)
+3. Commit your changes (`git commit -m 'Add new thing'`)
+4. Push to the branch (`git push origin feature/new-thing`)
+5. Open a Pull Request
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/ideadude/dot-md/issues)
+- **Documentation**: See [readme.txt](readme.txt) for WordPress.org format
 
 ## Credits
 
-- Built on top of [league/html-to-markdown](https://github.com/thephpleague/html-to-markdown)
-- Inspired by the need to make WordPress content easily accessible to AI assistants
+- Built with [league/html-to-markdown](https://github.com/thephpleague/html-to-markdown)
+- Created by [@ideadude](https://github.com/ideadude)
 
 ## License
 
-GPL2 - Same as WordPress
+GPL v2 or later - [License Details](https://www.gnu.org/licenses/gpl-2.0.html)
 
-## Changelog
+---
 
-### 0.1
-- Initial release
-- Basic Markdown conversion
-- Caching implementation
-- Admin bar integration
+Built for the WordPress and AI communities
