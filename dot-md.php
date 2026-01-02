@@ -3,7 +3,7 @@
 Plugin Name: Dot MD
 Plugin URI: https://www.paidmembershipspro.com/
 Description: Add .md to the end of a post URL to download a Markdown version. Makes it easy for AI to consume your content.
-Version: 0.2
+Version: 0.3
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 License: GPL2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'DOTMD_VERSION', '0.2' );
+define( 'DOTMD_VERSION', '0.3' );
 define( 'DOTMD_DIR', dirname( __FILE__ ) );
 define( 'DOTMD_URL', plugin_dir_url( __FILE__ ) );
 
@@ -42,6 +42,7 @@ require_once DOTMD_DIR . '/lib/Converter/EmphasisConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HardBreakConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HeaderConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HorizontalRuleConverter.php';
+require_once DOTMD_DIR . '/lib/Converter/IframeConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/ImageConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/InlineFormatConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/InputConverter.php';

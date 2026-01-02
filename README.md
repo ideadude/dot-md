@@ -104,6 +104,42 @@ Markdown is cached using WordPress transients:
 3. **Cache** - Store result in transient for 1 week
 4. **Serve** - Output with appropriate headers (inline or attachment)
 
+## Custom Converters
+
+This plugin extends the base `league/html-to-markdown` library with custom converters for cleaner, more AI-friendly markdown output:
+
+### SemanticConverter
+Strips semantic HTML5 tags while preserving content:
+- `<article>`, `<header>`, `<section>`, `<footer>`, `<main>`, `<aside>`, `<nav>`
+- `<figure>`, `<figcaption>`, `<cite>`, `<span>`
+
+### InlineFormatConverter
+Handles additional inline formatting:
+- `<s>`, `<del>`, `<strike>` → `~~strikethrough~~`
+- `<u>` and `<mark>` → stripped (no markdown equivalent)
+
+### InputConverter
+Converts HTML form inputs to markdown equivalents:
+- `<input type="checkbox" checked>` → `[x]` (task lists)
+- `<input type="checkbox">` → `[ ]` (task lists)
+
+### DetailsConverter
+Handles collapsible HTML5 details/summary:
+- `<summary>` → `**bold summary text**`
+- `<details>` → clean content blocks
+
+### IframeConverter
+Converts embedded iframes to clean links:
+- `<iframe src="URL" title="Title">` → `[Title](URL)`
+- `<iframe src="URL">` → `<URL>` (auto-link format)
+- Especially useful for YouTube, Vimeo, and other video embeds
+
+### TableConverter
+Registered from base library (was missing):
+- Converts HTML tables to markdown table format
+
+**Note**: These converters extend the base library to better handle WordPress content and modern HTML. This creates a fork from the standard `league/html-to-markdown` behavior but produces cleaner output for AI consumption and content portability.
+
 ## Requirements
 
 | Requirement | Version |

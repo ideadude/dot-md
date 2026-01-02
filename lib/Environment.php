@@ -15,6 +15,7 @@ use DotMD\HtmlToMarkdown\Converter\EmphasisConverter;
 use DotMD\HtmlToMarkdown\Converter\HardBreakConverter;
 use DotMD\HtmlToMarkdown\Converter\HeaderConverter;
 use DotMD\HtmlToMarkdown\Converter\HorizontalRuleConverter;
+use DotMD\HtmlToMarkdown\Converter\IframeConverter;
 use DotMD\HtmlToMarkdown\Converter\ImageConverter;
 use DotMD\HtmlToMarkdown\Converter\InlineFormatConverter;
 use DotMD\HtmlToMarkdown\Converter\InputConverter;
@@ -85,6 +86,7 @@ final class Environment
         $environment->addConverter(new HardBreakConverter());
         $environment->addConverter(new HeaderConverter());
         $environment->addConverter(new HorizontalRuleConverter());
+        $environment->addConverter(new IframeConverter());
         $environment->addConverter(new ImageConverter());
         $environment->addConverter(new InlineFormatConverter());
         $environment->addConverter(new InputConverter());
