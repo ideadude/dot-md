@@ -3,7 +3,7 @@
 Plugin Name: Dot MD
 Plugin URI: https://www.paidmembershipspro.com/
 Description: Add .md to the end of a post URL to download a Markdown version. Makes it easy for AI to consume your content.
-Version: 0.1
+Version: 0.2
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 License: GPL2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'DOTMD_VERSION', '0.1' );
+define( 'DOTMD_VERSION', '0.2' );
 define( 'DOTMD_DIR', dirname( __FILE__ ) );
 define( 'DOTMD_URL', plugin_dir_url( __FILE__ ) );
 
@@ -36,17 +36,21 @@ require_once DOTMD_DIR . '/lib/Converter/DefaultConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/BlockquoteConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/CodeConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/CommentConverter.php';
+require_once DOTMD_DIR . '/lib/Converter/DetailsConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/DivConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/EmphasisConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HardBreakConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HeaderConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/HorizontalRuleConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/ImageConverter.php';
+require_once DOTMD_DIR . '/lib/Converter/InlineFormatConverter.php';
+require_once DOTMD_DIR . '/lib/Converter/InputConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/LinkConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/ListBlockConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/ListItemConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/ParagraphConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/PreformattedConverter.php';
+require_once DOTMD_DIR . '/lib/Converter/SemanticConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/TextConverter.php';
 require_once DOTMD_DIR . '/lib/Converter/TableConverter.php';
 
@@ -146,6 +150,47 @@ function dotmd_template_redirect() {
 add_action( 'template_redirect', 'dotmd_template_redirect' );
 
 /**
+ * Clean up extra whitespace in markdown output
+ *
+ * @param string $markdown The markdown content
+ * @return string The cleaned markdown
+ */
+function dotmd_cleanup_whitespace( $markdown ) {
+	// Split into lines
+	$lines = explode( "\n", $markdown );
+
+	// Remove leading whitespace from each line (except code blocks)
+	$in_code_block = false;
+	$cleaned_lines = array();
+
+	foreach ( $lines as $line ) {
+		// Detect code block boundaries
+		if ( strpos( $line, '```' ) === 0 ) {
+			$in_code_block = ! $in_code_block;
+			$cleaned_lines[] = $line;
+			continue;
+		}
+
+		// Don't trim whitespace inside code blocks
+		if ( $in_code_block ) {
+			$cleaned_lines[] = $line;
+			continue;
+		}
+
+		// Trim leading whitespace from non-code lines
+		$cleaned_lines[] = ltrim( $line );
+	}
+
+	// Join back together
+	$markdown = implode( "\n", $cleaned_lines );
+
+	// Remove excessive blank lines (more than 2 consecutive)
+	$markdown = preg_replace( "/\n{3,}/", "\n\n", $markdown );
+
+	return $markdown;
+}
+
+/**
  * Generate markdown from post content
  *
  * @param WP_Post $post The post object
@@ -186,6 +231,8 @@ function dotmd_generate_markdown( $post ) {
 	// Convert content to markdown
 	try {
 		$content_markdown = $converter->convert( $content );
+		// Clean up extra whitespace
+		$content_markdown = dotmd_cleanup_whitespace( $content_markdown );
 		$markdown .= $content_markdown;
 	} catch ( Exception $e ) {
 		// If conversion fails, fall back to plain text
