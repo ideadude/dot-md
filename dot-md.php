@@ -3,7 +3,7 @@
 Plugin Name: Dot MD
 Plugin URI: https://www.paidmembershipspro.com/
 Description: Add .md to the end of a post URL to download a Markdown version. Makes it easy for AI to consume your content.
-Version: 0.3
+Version: 0.3.1
 Author: Paid Memberships Pro
 Author URI: https://www.paidmembershipspro.com
 License: GPL2
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants
-define( 'DOTMD_VERSION', '0.3' );
+define( 'DOTMD_VERSION', '0.3.1' );
 define( 'DOTMD_DIR', dirname( __FILE__ ) );
 define( 'DOTMD_URL', plugin_dir_url( __FILE__ ) );
 
@@ -127,16 +127,15 @@ function dotmd_template_redirect() {
 		wp_die( 'This content is password protected.', 'Password Protected', array( 'response' => 403 ) );
 	}
 
-	// Security: Block posts the current user cannot read
-	if ( ! current_user_can( 'read_post', $post->ID ) ) {
-		// Use 404 to avoid confirming the post exists
+	// Security: Block non-published posts (draft, private, pending, etc.)
+	if ( $post->post_status !== 'publish' ) {
 		status_header( 404 );
 		wp_die( 'Not found.', 'Not Found', array( 'response' => 404 ) );
 	}
 
 	// Security: Block non-public post types
 	$post_type_object = get_post_type_object( $post->post_type );
-	if ( empty( $post_type_object ) || ! $post_type_object->publicly_queryable ) {
+	if ( empty( $post_type_object ) || ! $post_type_object->public ) {
 		status_header( 404 );
 		wp_die( 'Not found.', 'Not Found', array( 'response' => 404 ) );
 	}
@@ -334,14 +333,14 @@ function dotmd_admin_bar_link( $wp_admin_bar ) {
 		return;
 	}
 
-	// Don't show link if user can't read the post
-	if ( ! current_user_can( 'read_post', $post->ID ) ) {
+	// Don't show link for non-published posts
+	if ( $post->post_status !== 'publish' ) {
 		return;
 	}
 
 	// Don't show link for non-public post types
 	$post_type_object = get_post_type_object( $post->post_type );
-	if ( empty( $post_type_object ) || ! $post_type_object->publicly_queryable ) {
+	if ( empty( $post_type_object ) || ! $post_type_object->public ) {
 		return;
 	}
 
