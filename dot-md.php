@@ -118,8 +118,14 @@ function dotmd_template_redirect() {
 	// Check if download parameter is set (from .htaccess rewrite)
 	$is_download = isset( $wp_query->query_vars['download'] ) && $wp_query->query_vars['download'] == '1';
 
-	// Check if we have a cached version
-	$cache_key = 'dotmd_' . $post->ID . '_v' . DOTMD_VERSION;
+	// Check if we have a cached version (user-specific to prevent exposing sensitive content)
+	$user_id = get_current_user_id(); // 0 for logged-out users
+	$post_version = get_post_meta( $post->ID, '_dotmd_version', true );
+	if ( empty( $post_version ) ) {
+		$post_version = 1;
+		update_post_meta( $post->ID, '_dotmd_version', $post_version );
+	}
+	$cache_key = 'dotmd_' . $post->ID . '_u' . $user_id . '_pv' . $post_version . '_v' . DOTMD_VERSION;
 	$markdown = get_transient( $cache_key );
 
 	// If no cache, generate markdown
@@ -250,6 +256,7 @@ function dotmd_generate_markdown( $post ) {
 
 /**
  * Clear markdown cache when post is updated
+ * Increments the post version to invalidate all user-specific caches
  *
  * @param int $post_id The post ID
  */
@@ -259,9 +266,14 @@ function dotmd_clear_cache( $post_id ) {
 		return;
 	}
 
-	// Clear the transient cache
-	$cache_key = 'dotmd_' . $post_id . '_v' . DOTMD_VERSION;
-	delete_transient( $cache_key );
+	// Increment the post version to invalidate all cached versions for all users
+	$post_version = get_post_meta( $post_id, '_dotmd_version', true );
+	if ( empty( $post_version ) ) {
+		$post_version = 1;
+	} else {
+		$post_version++;
+	}
+	update_post_meta( $post_id, '_dotmd_version', $post_version );
 }
 add_action( 'save_post', 'dotmd_clear_cache' );
 add_action( 'delete_post', 'dotmd_clear_cache' );
